@@ -35,8 +35,6 @@
   </script>
   </script>
 <script>
-javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})();
-
 var renderer, camera, controls, scene;
 var car, carFlag = true, x = 1;
 var floor1, floor2, floor3, floor4, floor5
@@ -69,8 +67,8 @@ function init() {
 	//**********************************************************
 
 	var floorGeo1 = new THREE.PlaneGeometry(20, 30, 10);
-  var floorGeo2 = new THREE.PlaneGeometry(10*2.24, 30, 10);
-  var floorGeo3 = new THREE.PlaneGeometry(10*1.5, 30, 10);
+  var floorGeo2 = new THREE.PlaneGeometry(10*Math.sqrt(5), 30, 10);
+  var floorGeo3 = new THREE.PlaneGeometry(10*Math.sqrt(2), 30, 10);
   var floorMat = new THREE.MeshBasicMaterial({
   	color: 0xffff00,
     side: THREE.DoubleSide
@@ -83,18 +81,18 @@ function init() {
 
   floor2 = new THREE.Mesh(floorGeo2, floorMat);
   scene.add(floor2);
-  floor2.position.set(29.7, 5.5, -15);
+  floor2.position.set(30, 5, -15);
   floor2.rotation.x = -Math.PI / 2;
-	floor2.rotation.y = -Math.PI / 6;
+	floor2.rotation.y = -Math.atan2(1, 2);
 
   floor3 = new THREE.Mesh(floorGeo1, floorMat);
   scene.add(floor3);
-  floor3.position.set(49.4, 11, -15);
+  floor3.position.set(50, 10, -15);
   floor3.rotation.x = -Math.PI / 2;
 
   floor4 = new THREE.Mesh(floorGeo3, floorMat);
   scene.add(floor4);
-  floor4.position.set(64.4, 5.5, -15);
+  floor4.position.set(65, 5, -15);
   floor4.rotation.x = -Math.PI / 2;
 	floor4.rotation.y = Math.PI / 4;
 
@@ -216,7 +214,6 @@ function animate() {
 function render(){
 	renderer.render (scene, camera);
 }
-
 </script>
 </body>
 
