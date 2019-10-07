@@ -71,7 +71,9 @@ scene.add( dLight );
     'https://zihlianglin.github.io/CGHW/HW1/grass.jpg'
   )
   var floor = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000, 500), new THREE.MeshPhongMaterial({map: texture, side: THREE.DoubleSide}));
+  texture.repeat.set( 20, 20 );
   texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
   scene.add(floor);
   floor.rotation.x = Math.PI/2
   floor.position.y = -1;
