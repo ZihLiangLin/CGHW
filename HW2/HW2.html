@@ -68,7 +68,7 @@ scene.add( dLight );
 	loader.setCrossOrigin('');
   var texture = loader.load(
     // resource URL
-    'https://zihlianglin.github.io/CGHW/Texture/grass.jpg'
+    'https://zihlianglin.github.io/CGHW/HW1/grass.jpg'
   )
   var floor = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000, 500), new THREE.MeshPhongMaterial({map: texture, side: THREE.DoubleSide}));
   texture.repeat.set( 20, 20 );
@@ -81,7 +81,7 @@ scene.add( dLight );
 	//**********************************************************
 	var texture1 = loader.load(
     // resource URL
-      'https://zihlianglin.github.io/CGHW/Texture/road.jpg'
+      'https://zihlianglin.github.io/CGHW/HW1/road.jpg'
   )
 	var floorGeo1 = new THREE.PlaneGeometry(20, 30, 10);
   var floorGeo2 = new THREE.PlaneGeometry(10*Math.sqrt(5), 30, 10);
