@@ -66,34 +66,35 @@ function init() {
   ///////////////////////////////////////////////////////////////////////////////////////////////
 
   // model
-		var onProgress = function(xhr) {
-			if (xhr.lengthComputable) {
-				var percentComplete = xhr.loaded / xhr.total * 100;
-				console.log(Math.round(percentComplete, 2) + '% downloaded');
-			}
-		};
+				var onProgress = function ( xhr ) {
+					if ( xhr.lengthComputable ) {
+						var percentComplete = xhr.loaded / xhr.total * 100;
+						console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+					}
+				};
+				var onError = function () { };
+				//var manager = new THREE.LoadingManager();
+        //manager.addHandler( /\.dds$/i, new THREE.DDSLoader() );
 
-		var onError = function(xhr) {};
+				var mtlLoader = new THREE.MTLLoader( )
+					mtlLoader.load( 'OBJ_Model/Aladdin/Aladdin.mtl', function ( materials ) {
+						materials.preload();
+						var objLoader = new THREE.OBJLoader()
+							objLoader.setMaterials( materials )
+							objLoader.load( 'OBJ_Model/Aladdin/Aladdin.obj', function ( object ) {
+                Aladdin.add(unitize (object, 20));
+								scene.add( Aladdin );
 
-		var mtlLoader = new THREE.MTLLoader();
-		mtlLoader.setPath('OBJ_Model/Aladdin/');
-		mtlLoader.load('Aladdin.mtl', function(materials) {
-			materials.preload();
-			var objLoader = new THREE.OBJLoader();
-			objLoader.setMaterials(materials);
-			objLoader.setPath('OBJ_Model/Aladdin/');
-			objLoader.load('Aladdin.obj', function(object) {
-				Aladdin.add(unitize (object, 20));
-				scene.add(Aladdin);
-				//scene.add (new THREE.BoxHelper (Car));
-				object.traverse (
+                object.traverse (
 					function(mesh) {
 						if (mesh instanceof THREE.Mesh) {
 							mesh.material.side = THREE.DoubleSide;
 						}
-				});
-			}, onProgress, onError);
-		});
+          })
+							}, onProgress, onError );
+					} );
+				//
+
 
 }
 
