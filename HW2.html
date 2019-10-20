@@ -28,14 +28,16 @@
 
 <body>
   <div id="info">CG HW2</div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/107/three.min.js"></script>
+  <script src="https://threejs.org/build/three.min.js"></script>
   <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
 
 <script>
 var renderer, camera, controls, scene;
-var Aladdin = new THREE.Object3D();
+var Aladdin = [];
+var localPlane = new THREE.Plane( new THREE.Vector3( 0,  1, 0 ), -160 );
+var localPlane2 = new THREE.Plane( new THREE.Vector3( 0,  -1, 0 ), 160 );
 
 init();
 animate();
@@ -49,13 +51,13 @@ function init() {
   document.body.appendChild(renderer.domElement);
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
-  camera.position.set(100, 40, 50)
+  camera.position.set(500, 200, 300)
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
 
   scene = new THREE.Scene();
 
-  var dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  var dLight = new THREE.DirectionalLight(0xffffff);
   scene.add( dLight );
 
   var aLight = new THREE.AmbientLight( 0x404040 );
@@ -64,38 +66,51 @@ function init() {
   window.addEventListener('resize', onWindowResize, false);
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
+  //floor
+  var loader = new THREE.TextureLoader();
+	loader.setCrossOrigin('');
+  var texture = loader.load(
+    // resource URL
+    'https://zihlianglin.github.io/CGHW/Texture/grass.jpg'
+  )
+  var floor = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000, 500), new THREE.MeshPhongMaterial({map: texture, side: THREE.DoubleSide}));
+  texture.repeat.set( 20, 20 );
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  scene.add(floor);
+  floor.rotation.x = Math.PI/2
+  floor.position.y = -1;
 
   // model
-				var onProgress = function ( xhr ) {
-					if ( xhr.lengthComputable ) {
-						var percentComplete = xhr.loaded / xhr.total * 100;
-						console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
-					}
-				};
-				var onError = function () { };
-				//var manager = new THREE.LoadingManager();
-        //manager.addHandler( /\.dds$/i, new THREE.DDSLoader() );
+	var onProgress = function ( xhr ) {
+		if ( xhr.lengthComputable ) {
+			var percentComplete = xhr.loaded / xhr.total * 100;
+			console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+		}
+	};
+	var onError = function () {};
 
-				var mtlLoader = new THREE.MTLLoader( )
-					mtlLoader.load( 'OBJ_Model/Aladdin/Aladdin.mtl', function ( materials ) {
-						materials.preload();
-						var objLoader = new THREE.OBJLoader()
-							objLoader.setMaterials( materials )
-							objLoader.load( 'OBJ_Model/Aladdin/Aladdin.obj', function ( object ) {
-                Aladdin.add(unitize (object, 20));
-								scene.add( Aladdin );
+	var mtlLoader = new THREE.MTLLoader();
+	mtlLoader.load( 'OBJ_Model/Aladdin/Aladdin.mtl', function ( materials ) {
+		materials.preload();
+		var objLoader = new THREE.OBJLoader()
+			objLoader.setMaterials( materials )
+			objLoader.load( 'OBJ_Model/Aladdin/Aladdin.obj', function ( object ) {
+        //Aladdin.add(unitize (object, 50));
+        scene.add(object);
+        object.traverse (
+	        function(mesh) {
+		        if (mesh instanceof THREE.Mesh) {
+			        mesh.material.side = THREE.DoubleSide;
+              Aladdin.push(mesh);
+		        }
+        });
+		  }, onProgress, onError );
+	});
 
-                object.traverse (
-					function(mesh) {
-						if (mesh instanceof THREE.Mesh) {
-							mesh.material.side = THREE.DoubleSide;
-						}
-          })
-							}, onProgress, onError );
-					} );
-				//
+  ////////////////////////////////////////////////////////////////////////////////
 
-
+  
 }
 
 function onWindowResize() {
@@ -107,6 +122,13 @@ function onWindowResize() {
 function animate() {
 	render();
   requestAnimationFrame(animate);
+
+  //Aladdin.children[0].material.clippingPlanes = [ localPlane ]
+  //Aladdin.children[1].material.clippingPlanes = [ localPlane2 ]
+
+  //Aladdin.rotation.y += 0.01;
+
+  renderer.localClippingEnabled = true;
 }
 
 function render(){
@@ -130,7 +152,7 @@ function unitize (object, targetSize) {
 		theObject.add (object);
 		object.scale.set (scaleSet, scaleSet, scaleSet);
 		object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
-		theObject.rotation.y = Math.PI/2; // fix car direction
+		theObject.rotation.y = Math.PI/2;
 		return theObject;
 	}
 
