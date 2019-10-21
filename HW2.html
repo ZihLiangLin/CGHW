@@ -28,6 +28,7 @@
   <div id="info">CG HW2</div>
   <script src="https://threejs.org/build/three.min.js"></script>
   <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.min.js"></script>
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
 
@@ -41,10 +42,120 @@ var rArm = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), -19 );
 var rArm2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), 19 );
 var lArm = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), 19);
 var lArm2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), -19 );
-var rLeg = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), -1 );
-var rLeg2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), 1 );
-var lLeg = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), 1 );
-var lLeg2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), -1 );
+var T = 4;
+var clock = new THREE.Clock();
+var ts = clock.getElapsedTime()
+var intKey =[];
+var a10rz, a11rz, a12rz, a20rz, a21rz, a22rz, a30rz, a31rz, a32rz, a20px, a21px, a20py, a21py, a30px, a31px, a30py, a31py;
+var gcontrols = {
+	a10rz: 0,
+	a11rz: 0,
+	a12rz: 0,
+	a20rz: 0,
+	a21rz: 0,
+  a22rz: 0,
+  a30rz: 0,
+  a31rz: 0,
+  a32rz: 0,
+  a20px: 0,
+  a21px: 0,
+  a20py: 0,
+  a21py: 0,
+  a30px: 0,
+  a31px: 0,
+  a30py: 0,
+  a31py: 0
+};
+
+var Default = {
+	a10rz: 0,
+	a11rz: 0,
+	a12rz: 0,
+	a20rz: 0,
+	a21rz: 0,
+  a22rz: 0,
+  a30rz: 0,
+  a31rz: 0,
+  a32rz: 0,
+  a20px: 0,
+  a21px: 0,
+  a20py: 0,
+  a21py: 0,
+  a30px: 0,
+  a31px: 0,
+  a30py: 0,
+  a31py: 0
+}
+
+var p1 = {
+	a10rz: 0.15,
+	a11rz: 0.15,
+	a12rz: 0.15,
+	a20rz: 0.15,
+	a21rz: 0.15,
+  a22rz: 0.15,
+  a30rz: 0.15,
+  a31rz: 0.15,
+  a32rz: 0.15,
+  a20px: 0,
+  a21px: 0,
+  a20py: 0,
+  a21py: 0,
+  a30px: 0,
+  a31px: 0,
+  a30py: 0,
+  a31py: 0
+}
+
+var p2 = {
+	a10rz: -0.15,
+	a11rz: -0.15,
+	a12rz: -0.15,
+	a20rz: -0.15,
+	a21rz: -0.15,
+  a22rz: -0.15,
+  a30rz: -0.15,
+  a31rz: -0.15,
+  a32rz: -0.15,
+  a20px: 0,
+  a21px: 0,
+  a20py: 0,
+  a21py: 0,
+  a30px: 0,
+  a31px: 0,
+  a30py: 0,
+  a31py: 0
+}
+
+var p3 = {
+	a10rz: 0,
+	a11rz: 0,
+	a12rz: 0,
+	a20rz: -0.2,
+	a21rz: -0.2,
+  a22rz: 0,
+  a30rz: 0.2,
+  a31rz: 0.2,
+  a32rz: 0,
+  a20px: -20,
+  a21px: -20,
+  a20py: -2,
+  a21py: -2,
+  a30px: 20,
+  a31px: 20,
+  a30py: -2,
+  a31py: -2
+}
+
+var keys = [
+  [0, Default],
+  [0.125, p1],
+  [0.25, Default],
+  [0.375, p2],
+  [0.5, Default],
+  [0.75, p3],
+  [1, Default]
+];
 
 init();
 animate();
@@ -140,31 +251,139 @@ function init() {
 		  }, onProgress, onError );
 	});
   ////////////////////////////////////////////////////////////////////////////////
+  var gui = new dat.GUI( {} );
+  gui.remember (gcontrols);
+  gui.add (gcontrols, 'a10rz', -50, 50);
+  gui.add (gcontrols, 'a11rz', -50, 50);
+  gui.add (gcontrols, 'a12rz', -50, 50);
+  gui.add (gcontrols, 'a20rz', -50, 50);
+  gui.add (gcontrols, 'a21rz', -50, 50);
+  gui.add (gcontrols, 'a22rz', -50, 50);
+  gui.add (gcontrols, 'a30rz', -50, 50);
+  gui.add (gcontrols, 'a31rz', -50, 50);
+  gui.add (gcontrols, 'a32rz', -50, 50);
+  gui.add (gcontrols, 'a20px', -50, 50);
+  gui.add (gcontrols, 'a21px', -50, 50);
+  gui.add (gcontrols, 'a20py', -50, 50);
+  gui.add (gcontrols, 'a21py', -50, 50);
+  gui.add (gcontrols, 'a30px', -50, 50);
+  gui.add (gcontrols, 'a31px', -50, 50);
+  gui.add (gcontrols, 'a30py', -50, 50);
+  gui.add (gcontrols, 'a31py', -50, 50);
 }
+
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
+
+function keyframe(t) {
+  var s = ((t - ts) % T) / T;
+
+  for (var i = 1; i < keys.length; i++) {
+    if (keys[i][0] > s) break;
+  }
+
+  // take i-1
+  var ii = i - 1;
+  var a = (s - keys[ii][0]) / (keys[ii + 1][0] - keys[ii][0]);
+  console.log (a)
+
+  intKey = [
+  	keys[ii][1].a10rz * (1 - a) + keys[ii + 1][1].a10rz * a,
+    keys[ii][1].a11rz * (1 - a) + keys[ii + 1][1].a11rz * a,
+    keys[ii][1].a12rz * (1 - a) + keys[ii + 1][1].a12rz * a,
+    keys[ii][1].a20rz * (1 - a) + keys[ii + 1][1].a20rz * a,
+    keys[ii][1].a21rz * (1 - a) + keys[ii + 1][1].a21rz * a,
+    keys[ii][1].a22rz * (1 - a) + keys[ii + 1][1].a22rz * a,
+    keys[ii][1].a30rz * (1 - a) + keys[ii + 1][1].a30rz * a,
+    keys[ii][1].a31rz * (1 - a) + keys[ii + 1][1].a31rz * a,
+    keys[ii][1].a32rz * (1 - a) + keys[ii + 1][1].a32rz * a,
+    keys[ii][1].a20px * (1 - a) + keys[ii + 1][1].a20px * a,
+    keys[ii][1].a21px * (1 - a) + keys[ii + 1][1].a21px * a,
+    keys[ii][1].a20py * (1 - a) + keys[ii + 1][1].a20py * a,
+    keys[ii][1].a21py * (1 - a) + keys[ii + 1][1].a21py * a,
+    keys[ii][1].a30px * (1 - a) + keys[ii + 1][1].a30px * a,
+    keys[ii][1].a31px * (1 - a) + keys[ii + 1][1].a31px * a,
+    keys[ii][1].a30py * (1 - a) + keys[ii + 1][1].a30py * a,
+    keys[ii][1].a31py * (1 - a) + keys[ii + 1][1].a31py * a,
+  ];
+}
+
 function animate() {
 	render();
   requestAnimationFrame(animate);
-  //head
+  //a1:head a2:rArm a3:lArm
   a1.children[0].material.clippingPlanes =  [head2, rArm2, lArm] ;
   a1.children[1].material.clippingPlanes =  [head2, rArm2, lArm] ;
   a2.children[0].material.clippingPlanes =  [head2, rArm, lArm] ;
   a2.children[1].material.clippingPlanes =  [head2, rArm, lArm] ;
   a3.children[0].material.clippingPlanes =  [head2, rArm2, lArm2] ;
   a3.children[1].material.clippingPlanes =  [head2, rArm2, lArm2] ;
+/*
+  //head
+  a1.rotation.z = 0.15;
+  a2.rotation.z = 0.15;
+  a3.rotation.z = 0.15;
 
-  //a1.children[0].rotation.y += 0.01;
-  //a1.children[1].rotation.y += 0.01;
-  //a2.children[0].rotation.y += 0.01;
-  //a2.children[1].rotation.y += 0.01;
+  //rArm
+  a2.children[0].rotation.z = -0.2;
+  a2.children[1].rotation.z = -0.2;
+  a2.children[0].position.x = -20;
+  a2.children[1].position.x = -20;
+  a2.children[0].position.y = -2;
+  a2.children[1].position.y = -2;
+
+  //lArm
+  a3.children[0].rotation.z += 0.003;
+  a3.children[1].rotation.z += 0.003;
+  a3.children[0].position.x += 0.3;
+  a3.children[1].position.x += 0.3;
+  a3.children[0].position.y += 0.02;
+  a3.children[1].position.y += 0.02;
+  */
+  keyframe (clock.getElapsedTime())
+  a1.children[0].rotation.z = intKey[0]
+  a1.children[1].rotation.z = intKey[1]
+  a1.children[2].rotation.z = intKey[2]
+  a2.children[0].rotation.z = intKey[3]
+  a2.children[1].rotation.z = intKey[4]
+  a2.children[2].rotation.z = intKey[5]
+  a3.children[0].rotation.z = intKey[6]
+  a3.children[1].rotation.z = intKey[7]
+  a3.children[2].rotation.z = intKey[8]
+  a2.children[0].position.x = intKey[9]
+  a2.children[1].position.x = intKey[10]
+  a2.children[0].position.y = intKey[11]
+  a2.children[1].position.y = intKey[12]
+  a3.children[0].position.x = intKey[13]
+  a3.children[1].position.x = intKey[14]
+  a3.children[0].position.y = intKey[15]
+  a3.children[1].position.y = intKey[16]
   renderer.localClippingEnabled = true;
 }
 function render(){
 	renderer.render (scene, camera);
+  /*if(a1 != undefined){
+    a1.children[0].rotation.z = intKey[0]
+    a1.children[1].rotation.z = intKey[1]
+    a1.children[2].rotation.z = intKey[2]
+    a2.children[0].rotation.z = intKey[3]
+    a2.children[1].rotation.z = intKey[4]
+    a2.children[2].rotation.z = intKey[5]
+    a3.children[0].rotation.z = intKey[6]
+    a3.children[1].rotation.z = intKey[7]
+    a3.children[2].rotation.z = intKey[8]
+    a2.children[0].position.x = intKey[9]
+    a2.children[1].position.x = intKey[10]
+    a2.children[0].position.y = intKey[11]
+    a2.children[1].position.y = intKey[12]
+    a3.children[0].position.x = intKey[13]
+    a3.children[1].position.x = intKey[14]
+    a3.children[0].position.y = intKey[15]
+    a3.children[1].position.y = intKey[16]
+  }*/
 }
 function unitize (object, targetSize) {
 		// find bounding box of 'object'
