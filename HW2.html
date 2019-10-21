@@ -13,7 +13,6 @@
   font-size: 10px;
   position: absolute;
   }
-
   #info {
   position: absolute;
   top: 3%;
@@ -22,7 +21,6 @@
   text-align: center;
   color: #ffff00;
   }
-
 </style>
 </head>
 
@@ -34,14 +32,22 @@
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
 
 <script>
+//建立多個models可以解決1母多子的情況
 var renderer, camera, controls, scene;
-var Aladdin = [];
-var localPlane = new THREE.Plane( new THREE.Vector3( 0,  1, 0 ), -160 );
-var localPlane2 = new THREE.Plane( new THREE.Vector3( 0,  -1, 0 ), 160 );
+var a1 = new THREE.Object3D(), a2 = new THREE.Object3D(), a3 = new THREE.Object3D();
+var head = new THREE.Plane( new THREE.Vector3( 0,  -1, 0 ), 114 );
+var head2 = new THREE.Plane( new THREE.Vector3( 0,  1, 0 ), -114 );
+var rArm = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), -19 );
+var rArm2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), 19 );
+var lArm = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), 19);
+var lArm2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), -19 );
+var rLeg = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), -1 );
+var rLeg2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), 1 );
+var lLeg = new THREE.Plane( new THREE.Vector3( -1,  0, 0 ), 1 );
+var lLeg2 = new THREE.Plane( new THREE.Vector3( 1,  0, 0 ), -1 );
 
 init();
 animate();
-
 function init() {
   renderer = new THREE.WebGLRenderer({
     antialias: true
@@ -49,22 +55,15 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x888888);
   document.body.appendChild(renderer.domElement);
-
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.set(500, 200, 300)
-
   controls = new THREE.OrbitControls(camera, renderer.domElement);
-
   scene = new THREE.Scene();
-
   var dLight = new THREE.DirectionalLight(0xffffff);
   scene.add( dLight );
-
   var aLight = new THREE.AmbientLight( 0x404040 );
   scene.add( aLight );
-
   window.addEventListener('resize', onWindowResize, false);
-
   ///////////////////////////////////////////////////////////////////////////////////////////////
   //floor
   var loader = new THREE.TextureLoader();
@@ -78,9 +77,8 @@ function init() {
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   scene.add(floor);
-  floor.rotation.x = Math.PI/2
-  floor.position.y = -1;
-
+  floor.rotation.x = Math.PI/2;
+  floor.position.y = -0.2;
   // model
 	var onProgress = function ( xhr ) {
 		if ( xhr.lengthComputable ) {
@@ -89,52 +87,85 @@ function init() {
 		}
 	};
 	var onError = function () {};
-
 	var mtlLoader = new THREE.MTLLoader();
 	mtlLoader.load( 'OBJ_Model/Aladdin/Aladdin.mtl', function ( materials ) {
 		materials.preload();
 		var objLoader = new THREE.OBJLoader()
 			objLoader.setMaterials( materials )
-			objLoader.load( 'OBJ_Model/Aladdin/Aladdin.obj', function ( object ) {
-        //Aladdin.add(unitize (object, 50));
-        scene.add(object);
+			objLoader.load('OBJ_Model/Aladdin/Aladdin.obj', function ( object ) {
+        //a1.add(unitize (object, 50));
+        a1.copy(object);
+        scene.add(a1);
+        a1.position.x = -5
         object.traverse (
 	        function(mesh) {
 		        if (mesh instanceof THREE.Mesh) {
 			        mesh.material.side = THREE.DoubleSide;
-              Aladdin.push(mesh);
 		        }
         });
 		  }, onProgress, onError );
 	});
-
+  mtlLoader.load( 'OBJ_Model/Aladdin/Aladdin.mtl', function ( materials ) {
+		materials.preload();
+		var objLoader = new THREE.OBJLoader()
+			objLoader.setMaterials( materials )
+			objLoader.load('OBJ_Model/Aladdin/Aladdin.obj', function ( object ) {
+        //a2.add(unitize (object, 50));
+        a2.copy(object);
+        scene.add(a2);
+        a2.position.x = -5
+        object.traverse (
+	        function(mesh) {
+		        if (mesh instanceof THREE.Mesh) {
+			        mesh.material.side = THREE.DoubleSide;
+		        }
+        });
+		  }, onProgress, onError );
+	});
+  mtlLoader.load( 'OBJ_Model/Aladdin/Aladdin.mtl', function ( materials ) {
+		materials.preload();
+		var objLoader = new THREE.OBJLoader()
+			objLoader.setMaterials( materials )
+			objLoader.load('OBJ_Model/Aladdin/Aladdin.obj', function ( object ) {
+        //a3.add(unitize (object, 50));
+        a3.copy(object);
+        scene.add(a3);
+        a3.position.x = -5
+        object.traverse (
+	        function(mesh) {
+		        if (mesh instanceof THREE.Mesh) {
+			        mesh.material.side = THREE.DoubleSide;
+		        }
+        });
+		  }, onProgress, onError );
+	});
   ////////////////////////////////////////////////////////////////////////////////
-
-  
 }
-
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
-
 function animate() {
 	render();
   requestAnimationFrame(animate);
+  //head
+  a1.children[0].material.clippingPlanes =  [head2, rArm2, lArm] ;
+  a1.children[1].material.clippingPlanes =  [head2, rArm2, lArm] ;
+  a2.children[0].material.clippingPlanes =  [head2, rArm, lArm] ;
+  a2.children[1].material.clippingPlanes =  [head2, rArm, lArm] ;
+  a3.children[0].material.clippingPlanes =  [head2, rArm2, lArm2] ;
+  a3.children[1].material.clippingPlanes =  [head2, rArm2, lArm2] ;
 
-  //Aladdin.children[0].material.clippingPlanes = [ localPlane ]
-  //Aladdin.children[1].material.clippingPlanes = [ localPlane2 ]
-
-  //Aladdin.rotation.y += 0.01;
-
+  //a1.children[0].rotation.y += 0.01;
+  //a1.children[1].rotation.y += 0.01;
+  //a2.children[0].rotation.y += 0.01;
+  //a2.children[1].rotation.y += 0.01;
   renderer.localClippingEnabled = true;
 }
-
 function render(){
 	renderer.render (scene, camera);
 }
-
 function unitize (object, targetSize) {
 		// find bounding box of 'object'
 		var box3 = new THREE.Box3();
@@ -155,7 +186,6 @@ function unitize (object, targetSize) {
 		theObject.rotation.y = Math.PI/2;
 		return theObject;
 	}
-
 </script>
 </body>
 
