@@ -32,10 +32,11 @@
   <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/math/ConvexHull.js"></script>
   <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
 <script>
 var renderer, camera, controls, scene;
-var porsche = new THREE.Object3D();
+var porsche = new THREE.Object3D(), build1, build2, build3;
 var keyboard = new KeyboardState();
 var clock;
 var pos = new THREE.Vector3();
@@ -111,10 +112,24 @@ function init() {
         });
 		  }, onProgress, onError );
 	});
-
+////////////////////////////////////////////////////////////////////////////////
   clock = new THREE.Clock();
   power = 0.1;
   angle = 0.0;
+////////////////////////////////////////////////////////////////////////////////
+  texture = loader.load('https://zihlianglin.github.io/CGHW/Texture/stone_wall.jpg')
+  var geometry = new THREE.CylinderGeometry(20, 20, 80, 32);
+  var material = new THREE.MeshPhongMaterial({map: texture});
+
+  build1 = new THREE.Mesh(geometry, material)
+  scene.add(build1)
+  build1.position.set(300, 40, 0)
+  build2 = new THREE.Mesh(geometry, material)
+  scene.add(build2)
+  build2.position.set(-300, 40, 120)
+  build3 = new THREE.Mesh(geometry, material)
+  scene.add(build3)
+  build3.position.set(50, 40, -200)
 }
 
 function onWindowResize() {
