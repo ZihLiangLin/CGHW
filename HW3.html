@@ -80,7 +80,7 @@ function init() {
 	loader.setCrossOrigin('');
   var texture = loader.load(
     // resource URL
-    'https://zihlianglin.github.io/CGHW/Texture/asphalt.jpg'
+    'Texture/asphalt.jpg'
   )
   var floor = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000, 500), new THREE.MeshPhongMaterial({map: texture, side: THREE.DoubleSide}));
   texture.repeat.set( 20, 20 );
@@ -117,19 +117,22 @@ function init() {
   power = 0.1;
   angle = 0.0;
 ////////////////////////////////////////////////////////////////////////////////
-  texture = loader.load('https://zihlianglin.github.io/CGHW/Texture/stone_wall.jpg')
-  var geometry = new THREE.CylinderGeometry(20, 20, 80, 32);
-  var material = new THREE.MeshPhongMaterial({map: texture});
+  var texture1 = loader.load('Texture/stone_wall.jpg')
+  var geometry = new THREE.CylinderGeometry(100, 100, 500, 32);
+  var material = new THREE.MeshPhongMaterial({map: texture1});
+  texture1.repeat.set( 5, 5 );
+  texture1.wrapS = THREE.RepeatWrapping;
+  texture1.wrapT = THREE.RepeatWrapping;
 
   build1 = new THREE.Mesh(geometry, material)
   scene.add(build1)
-  build1.position.set(300, 40, 0)
+  build1.position.set(750, 250, 0)
   build2 = new THREE.Mesh(geometry, material)
   scene.add(build2)
-  build2.position.set(-300, 40, 120)
+  build2.position.set(-500, 250, 430)
   build3 = new THREE.Mesh(geometry, material)
   scene.add(build3)
-  build3.position.set(50, 40, -200)
+  build3.position.set(50, 250, -200)
 }
 
 function onWindowResize() {
