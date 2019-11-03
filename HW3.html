@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<style>
+  body {
+  background-color: #fff;
+  color: #111;
+  margin: 0px;
+  overflow: hidden;
+  font-family: Monospace;
+  font-size: 10px;
+  position: absolute;
+  }
+
+  #info {
+  position: absolute;
+  top: 3%;
+  width: 100%;
+  padding: 5px;
+  text-align: center;
+  color: #ffff00;
+  }
+
+</style>
+</head>
+
+<body>
+  <div id="info">CG HW3</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+  <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
+  <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<script>
+var renderer, camera, controls, scene;
+var porsche = new THREE.Object3D();
+var keyboard = new KeyboardState();
+var clock;
+var pos = new THREE.Vector3();
+var power, angle, vel = new THREE.Vector3(), force = new THREE.Vector3();
+
+(function() {
+  Math.clamp = function(val,min,max){
+    return Math.min(Math.max(val,min),max);
+  }})();
+
+init();
+animate();
+
+function init() {
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.set(1000, 400, 500)
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableKeys = false;
+
+  scene = new THREE.Scene();
+
+  var dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  scene.add( dLight );
+
+  var aLight = new THREE.AmbientLight( 0x404040 );
+  scene.add( aLight );
+
+  window.addEventListener('resize', onWindowResize, false);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  //floor
+  var loader = new THREE.TextureLoader();
+	loader.setCrossOrigin('');
+  var texture = loader.load(
+    // resource URL
+    'https://zihlianglin.github.io/CGHW/Texture/asphalt.jpg'
+  )
+  var floor = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000, 500), new THREE.MeshPhongMaterial({map: texture, side: THREE.DoubleSide}));
+  texture.repeat.set( 20, 20 );
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  scene.add(floor);
+  floor.rotation.x = Math.PI/2;
+
+  var onProgress = function ( xhr ) {
+		if ( xhr.lengthComputable ) {
+			var percentComplete = xhr.loaded / xhr.total * 100;
+			console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+		}
+	};
+	var onError = function () {};
+	var mtlLoader = new THREE.MTLLoader();
+	mtlLoader.load( 'OBJ_Model/models/porsche.mtl', function ( materials ) {
+		materials.preload();
+		var objLoader = new THREE.OBJLoader()
+			objLoader.setMaterials( materials )
+			objLoader.load('OBJ_Model/models/porsche.obj', function ( object ) {
+        porsche.add(unitize (object, 200));
+        scene.add(porsche);
+        object.traverse (
+	        function(mesh) {
+		        if (mesh instanceof THREE.Mesh) {
+			        mesh.material.side = THREE.DoubleSide;
+		        }
+        });
+		  }, onProgress, onError );
+	});
+
+  clock = new THREE.Clock();
+  power = 0.1;
+  angle = 0.0;
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function update(dt) {
+
+  keyboard.update();
+
+  if (vel.length() > 0) {
+    angle = Math.atan2(-vel.z, vel.x); // update orientation
+  }
+	if (keyboard.down("home"))
+  	power = 1.0;
+  if (keyboard.pressed("space"))
+ 	  power = 0.1;
+  if (keyboard.pressed("up")){
+    power *= 2.2;
+    console.log('666')
+  }
+  if (keyboard.pressed("down"))
+ 	  power /= 2.2;
+
+  power = Math.clamp (power, 0, 400.0);
+
+
+  var angle_thrust = angle;
+  if (keyboard.pressed("left"))
+    angle_thrust += 0.3;
+  if (keyboard.pressed("right"))
+    angle_thrust -= 0.3;
+
+  // compute force
+  var thrust = new THREE.Vector3(1,0,0).multiplyScalar(power).applyAxisAngle(new THREE.Vector3(0,1,0), angle_thrust);
+  force.copy (thrust);
+  force.add(vel.clone().multiplyScalar(-2))
+
+  // eulers
+  vel.add(force.clone().multiplyScalar(dt));
+  pos.add(vel.clone().multiplyScalar(dt));
+}
+
+function animate() {
+  render();
+  requestAnimationFrame(animate);
+
+  controls.update();
+
+  var dt = clock.getDelta();
+  update(dt);
+
+  // car update
+  porsche.position.copy(pos);
+  porsche.rotation.y = angle;
+}
+
+function render(){
+	renderer.render (scene, camera);
+}
+
+function unitize (object, targetSize) {
+		// find bounding box of 'object'
+		var box3 = new THREE.Box3();
+		box3.setFromObject (object);
+		var size = new THREE.Vector3();
+		size.subVectors (box3.max, box3.min);
+		var center = new THREE.Vector3();
+		center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+		console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+		console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+		// uniform scaling according to objSize
+		var objSize = Math.max (size.x, size.y, size.z);
+		var scaleSet = targetSize/objSize;
+		var theObject =  new THREE.Object3D();
+		theObject.add (object);
+		object.scale.set (scaleSet, scaleSet, scaleSet);
+		object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
+		theObject.rotation.y = Math.PI/2;
+		return theObject;
+	}
+
+</script>
+</body>
+
+</html>
