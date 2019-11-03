@@ -62,8 +62,7 @@ function init() {
   camera.position.set(1000, 400, 500)
 
   cameraCar = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
-  camera.position.set(50, 40, 0)
-  cameraCar.lookAt(new THREE.Vector3(0, 40, 0));
+  cameraCar.position.set(50, 40, 0)
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableKeys = false;
@@ -212,8 +211,8 @@ function animate() {
   porsche.position.copy(pos);
   porsche.rotation.y = angle;
 
-  cameraCar.position.copy(porsche.localToWorld(new THREE.Vector3(-100, 50, 0)))
-  cameraCar.lookAt(porsche.position.x, porsche.position.y + 40, porsche.position.z);
+  cameraCar.position.copy(porsche.localToWorld(new THREE.Vector3(-100, 80, 0)))
+  cameraCar.lookAt(porsche.localToWorld(new THREE.Vector3(100, 30, 0)));
 }
 
 function render(){
