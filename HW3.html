@@ -35,12 +35,12 @@
   <script src="https://rawgit.com/mrdoob/three.js/master/examples/js/math/ConvexHull.js"></script>
   <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
 <script>
-var renderer, camera, controls, scene;
-var porsche = new THREE.Object3D(), build1, build2, build3;
+var renderer, camera, cameraCar, controls, scene;
+var porsche = new THREE.Object3D(), porsche_max = new THREE.Vector3(), porsche_min = new THREE.Vector3();
+var builds = [], rad = 100, stop = false, stopFlag = false, num;
 var keyboard = new KeyboardState();
 var clock;
-var pos = new THREE.Vector3();
-var power, angle, vel = new THREE.Vector3(), force = new THREE.Vector3();
+var pos = new THREE.Vector3(), power, angle, vel = new THREE.Vector3(), force = new THREE.Vector3();
 
 (function() {
   Math.clamp = function(val,min,max){
@@ -60,6 +60,10 @@ function init() {
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.set(1000, 400, 500)
+
+  cameraCar = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.set(50, 40, 0)
+  cameraCar.lookAt(new THREE.Vector3(0, 40, 0));
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableKeys = false;
@@ -118,21 +122,17 @@ function init() {
   angle = 0.0;
 ////////////////////////////////////////////////////////////////////////////////
   var texture1 = loader.load('Texture/stone_wall.jpg')
-  var geometry = new THREE.CylinderGeometry(100, 100, 500, 32);
+  var geometry = new THREE.CylinderGeometry(rad, rad, 500, 32);
   var material = new THREE.MeshPhongMaterial({map: texture1});
   texture1.repeat.set( 5, 5 );
   texture1.wrapS = THREE.RepeatWrapping;
   texture1.wrapT = THREE.RepeatWrapping;
 
-  build1 = new THREE.Mesh(geometry, material)
-  scene.add(build1)
-  build1.position.set(750, 250, 0)
-  build2 = new THREE.Mesh(geometry, material)
-  scene.add(build2)
-  build2.position.set(-500, 250, 430)
-  build3 = new THREE.Mesh(geometry, material)
-  scene.add(build3)
-  build3.position.set(50, 250, -200)
+  for(let i = 0 ; i < 10; i++){
+    builds[i] = new THREE.Mesh(geometry, material)
+    scene.add(builds[i])
+    builds[i].position.set(getRandom(-2450, 2450), 250, getRandom(-2450, 2450))
+  }
 }
 
 function onWindowResize() {
@@ -140,6 +140,10 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
+
+function getRandom(min,max){
+    return Math.floor(Math.random()*(max-min+1))+min;
+};
 
 function update(dt) {
 
@@ -152,14 +156,12 @@ function update(dt) {
   	power = 1.0;
   if (keyboard.pressed("space"))
  	  power = 0.1;
-  if (keyboard.pressed("up")){
+  if (keyboard.pressed("up"))
     power *= 2.2;
-    console.log('666')
-  }
   if (keyboard.pressed("down"))
  	  power /= 2.2;
 
-  power = Math.clamp (power, 0, 400.0);
+  power = Math.clamp (power, -1000, 400.0);
 
 
   var angle_thrust = angle;
@@ -176,6 +178,25 @@ function update(dt) {
   // eulers
   vel.add(force.clone().multiplyScalar(dt));
   pos.add(vel.clone().multiplyScalar(dt));
+
+  if(!stopFlag){
+    for(let i = 0 ; i < builds.length; i++){
+      stop = collision(porsche_max.clone().add(porsche.position), porsche_min.clone().add(porsche.position), builds[i]);
+      if(stop && !stopFlag){
+        power = 0.1;
+        stopFlag = true;
+        num = i
+        break;
+      }
+    }
+  }
+  else{
+    if(!collision(porsche_max.clone().add(porsche.position), porsche_min.clone().add(porsche.position), builds[num])){
+      power = 0.01;
+      stopFlag = false;
+    }
+  }
+  console.log(stopFlag, power)
 }
 
 function animate() {
@@ -190,32 +211,78 @@ function animate() {
   // car update
   porsche.position.copy(pos);
   porsche.rotation.y = angle;
+
+  cameraCar.position.copy(porsche.localToWorld(new THREE.Vector3(-100, 50, 0)))
+  cameraCar.lookAt(porsche.position.x, porsche.position.y + 40, porsche.position.z);
 }
 
 function render(){
-	renderer.render (scene, camera);
+  renderer.autoClear = false;
+  renderer.clear();
+  var WW = window.innerWidth;
+  var HH = window.innerHeight;
+  renderer.setViewport(0, 0, WW/2, HH);
+  camera.aspect = WW/2 / HH;
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera)
+
+  renderer.setViewport(WW/2, 0, WW/2, HH)
+  renderer.render(scene, cameraCar)
+  renderer.autoClear = true;
 }
 
 function unitize (object, targetSize) {
-		// find bounding box of 'object'
-		var box3 = new THREE.Box3();
-		box3.setFromObject (object);
-		var size = new THREE.Vector3();
-		size.subVectors (box3.max, box3.min);
-		var center = new THREE.Vector3();
-		center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
-		console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
-		console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
-		// uniform scaling according to objSize
-		var objSize = Math.max (size.x, size.y, size.z);
-		var scaleSet = targetSize/objSize;
-		var theObject =  new THREE.Object3D();
-		theObject.add (object);
-		object.scale.set (scaleSet, scaleSet, scaleSet);
-		object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
-		theObject.rotation.y = Math.PI/2;
-		return theObject;
-	}
+	// find bounding box of 'object'
+	var box3 = new THREE.Box3();
+	box3.setFromObject (object);
+	var size = new THREE.Vector3();
+	size.subVectors (box3.max, box3.min);
+  porsche_max.copy(box3.max);
+  porsche_min.copy(box3.min);
+	var center = new THREE.Vector3();
+	center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+	console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+	console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+	// uniform scaling according to objSize
+	var objSize = Math.max (size.x, size.y, size.z);
+	var scaleSet = targetSize/objSize;
+	var theObject =  new THREE.Object3D();
+	theObject.add (object);
+	object.scale.set (scaleSet, scaleSet, scaleSet);
+	object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
+	theObject.rotation.y = Math.PI/2;
+	return theObject;
+}
+
+function collision(max, min, building){
+  var rad2 = rad * rad;
+  max.x -= building.position.x;
+  max.z -= building.position.z;
+  min.x -= building.position.x;
+  min.z -= building.position.z;
+
+  if (max.x < 0) 			/* R to left of circle center */
+   	if (max.z < 0) 		/* R in lower left corner */
+     		return ((max.x * max.x + max.z * max.z) < rad2);
+   	else if (min.z > 0) 	/* R in upper left corner */
+     		return ((max.x * max.x + min.z * min.z) < rad2);
+   	else 					/* R due West of circle */
+     		return(Math.abs(max.x) < rad);
+ 	else if (min.x > 0)  	/* R to right of circle center */
+   		if (max.z < 0) 	/* R in lower right corner */
+     			return ((min.x * min.x + max.z * max.z) < rad2);
+   	else if (min.z > 0)  	/* R in upper right corner */
+     		return ((min.x * min.x + min.z * min.z) < rad2);
+   	else 				/* R due East of circle */
+     		return (min.x < rad);
+ 	else				/* R on circle vertical centerline */
+   		if (max.z < 0) 	/* R due South of circle */
+     		return (Math.abs(max.z) < rad);
+   	else if (min.z > 0)  	/* R due North of circle */
+     		return (min.z < rad);
+   	else 				/* R contains circle centerpoint */
+     		return true;
+}
 
 </script>
 </body>
