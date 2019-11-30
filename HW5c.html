@@ -27,7 +27,7 @@ body {
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
 
-<script id="myVertexShader" type="x-shader/x-vertex">
+<!--script id="myVertexShader" type="x-shader/x-vertex">
   uniform vec3 lightpos;  // world coordinate
   varying vec3 eyelightdir;
   varying vec3 eyenormal;
@@ -64,7 +64,7 @@ body {
     vec3 colorOut = (1.0-(1.0 + diffuse)/2.0) * coolColorMod + ((1.0 + diffuse)/2.0) * warmColorMod;
     gl_FragColor = vec4 (colorOut, opacity);
   }
-</script>
+</script-->
 
 <script>
 class Teapot{ //Teapot Class
@@ -73,7 +73,6 @@ class Teapot{ //Teapot Class
     this.flag = true;
     this.angle = 0;
     this.mesh = this.makeTeapot(number);
-    this.mtl = teapotMaterial;
     this.name = number;
   }
   getisOn() {
@@ -81,6 +80,7 @@ class Teapot{ //Teapot Class
   }
   toggle() {
     this.flag = !this.flag;
+    this.update();
   }
   getangle() {
     return this.angle;
@@ -92,24 +92,16 @@ class Teapot{ //Teapot Class
     return this.name;
   }
   update () {
-  	if(this.flag == true && this.life > 0){
+  	if(this.flag && this.life > 0){
   	  this.angle += 0.05;
   	  this.life  -= 0.4;
-      this.mtl.uniforms.opacity.value = this.life*0.01;
+      this.mesh.material.opacity = this.life*0.01;
   	}
-    this.mtl.uniforms.lightpos.value.copy(pointLight.position);
   }
   makeTeapot(number) {
-    teapotMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        lightpos: {type:'v3', value: new THREE.Vector3(0, 30, 20) },
-    	  opacity: {type: 'f', value: 1.0},
-  	   },
-      vertexShader: document.getElementById('myVertexShader').textContent,
-      fragmentShader: document.getElementById('myFragmentShader').textContent
-    });
-    teapotMaterial.transparent = true
+    teapotMaterial = new THREE.MeshPhongMaterial({transparent: true, opacity: 1});
     let model = new THREE.Mesh (new THREE.TeapotBufferGeometry(10), teapotMaterial);
+    model.name = number;
     return model;
   }
 }
@@ -139,8 +131,7 @@ function init() {
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
   scene.add(gridXZ);
-  pointLight = new THREE.PointLight(0xefffff);
-  //pointLight.position.set(200, 300, 200);
+  pointLight = new THREE.PointLight(0xffffff);
   scene.add(pointLight);
   lighthelper = new THREE.Mesh(new THREE.SphereGeometry(5, 8, 4), new THREE.MeshPhongMaterial({
     color: 0xfcdb00,
@@ -177,6 +168,7 @@ function onDocumentMouseDown(event) {
   raycaster.setFromCamera(mouse, camera);
   var intersects = raycaster.intersectObjects(pickables, true);
   if (intersects.length > 0) {
+    //console.log(intersects[0].object.name)
   	if(intersects[0].object.parent.name === 0){
   		let picked = intersects[0].object.parent.name;
   		if(picked === 0){
@@ -190,7 +182,7 @@ function onDocumentMouseDown(event) {
   		}
   	}
   	else {
-  		let picked = intersects[0].object.parent.name;
+  		let picked = intersects[0].object.name;
   		for (let i = 0; i < teapots.length; i++) {
   			if(picked === teapots[i].name) teapots[i].toggle(); //切換teapot狀態
   		}
