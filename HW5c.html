@@ -141,7 +141,7 @@ function init() {
     color: 0xffff00,
     wireframe: true
   }));
-  scene.add(lighthelper);
+  //scene.add(lighthelper);
   mesh = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({
     transparent: true,
     opacity: 0.0,
@@ -209,8 +209,8 @@ function animate() {
   		}
     }
   }
-  pointLight.position.set(60 * Math.cos(angle), 80, 60 * Math.sin(angle));
-  lighthelper.position.copy(pointLight.position);
+  //pointLight.position.set(60 * Math.cos(angle), 80, 60 * Math.sin(angle));
+  //lighthelper.position.copy(pointLight.position);
   $('#islife').val(life);
   requestAnimationFrame(animate);
   controls.update();
