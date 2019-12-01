@@ -48,8 +48,13 @@ body {
     varying vec3 eyenormal;
     varying vec4 eyepos;
 
-    uniform vec3 kcool;
-    uniform vec3 kwarm;
+    uniform vec3 kBlue;
+    uniform vec3 kYellow;
+
+    vec3 kWarm;
+    vec3 kCool;
+    float alpha = 0.25;
+    float beta = 0.5;
 
     void main() {
         float lDotn = dot (normalize (eyenormal), normalize (eyelightdir));
@@ -59,17 +64,12 @@ body {
         vec3 specular = pow (dot (eyenormal, h), shininess) *vec3 (1,0,0);
 
         float k = (1. + lDotn)/2.;
-        gl_FragColor = vec4(mix (kcool, kwarm, k) + specular, 1.0); // built-in: mix
+        kCool = kBlue + alpha * k;
+        kWarm = kYellow + beta * k;
+        gl_FragColor = vec4(mix (kCool, kWarm, k) + specular, 1.0); // built-in: mix
     }
 </script>
 <!--script id="myFragmentShader" type="x-shader/x-fragment">
-  varying vec3 eyelightdir;
-  varying vec3 eyenormal;
-  varying vec4 eyepos;
-  vec3	coolColor;
-  vec3	warmColor;
-  float alpha;
-  float beta;
   uniform float opacity;
   void main() {
     // Gooch Shading
@@ -136,8 +136,8 @@ function init() {
     teapotMaterial = new THREE.ShaderMaterial({
         uniforms: {
         	lightpos: {type: 'v3', value: new THREE.Vector3()},
-          kcool: {type: 'v3', value: new THREE.Vector3(0,0,1)},
-          kwarm: {type: 'v3', value: new THREE.Vector3(1,1,0)}
+          kBlue: {type: 'v3', value: new THREE.Vector3(0,0,1)},
+          kYellow: {type: 'v3', value: new THREE.Vector3(1,1,0)}
         },
         vertexShader: document.getElementById('myVertexShader').textContent,
         fragmentShader: document.getElementById('myFragmentShader').textContent
