@@ -27,45 +27,6 @@ body {
 <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
 
-<!--script id="myVertexShader" type="x-shader/x-vertex">
-  uniform vec3 lightpos;  // world coordinate
-  varying vec3 eyelightdir;
-  varying vec3 eyenormal;
-  varying vec4 eyepos;
-  void main() {
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    eyepos = modelViewMatrix * vec4 (position, 1.0);
-    vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
-    eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
-    eyenormal = normalMatrix * normal;
-  }
-</script>
-
-<script id="myFragmentShader" type="x-shader/x-fragment">
-  varying vec3 eyelightdir;
-  varying vec3 eyenormal;
-  varying vec4 eyepos;
-  vec3	coolColor;
-  vec3	warmColor;
-  float alpha;
-  float beta;
-  uniform float opacity;
-  void main() {
-    // Gooch Shading
-    vec3 normalVector = normalize(eyenormal);
-    vec3 lightVector = normalize(eyelightdir);
-    float diffuse = dot(normalVector, lightVector);
-    coolColor = vec3(0.0, 0.682, 1.0);
-    warmColor = vec3(0.749, 0.392, 0.137);
-    alpha = 0.8;
-    beta = 0.2;
-    vec3 coolColorMod = coolColor + diffuse * alpha;
-    vec3 warmColorMod = warmColor + diffuse * beta;
-    vec3 colorOut = (1.0-(1.0 + diffuse)/2.0) * coolColorMod + ((1.0 + diffuse)/2.0) * warmColorMod;
-    gl_FragColor = vec4 (colorOut, opacity);
-  }
-</script-->
-
 <script>
 class Teapot{ //Teapot Class
   constructor (number) {

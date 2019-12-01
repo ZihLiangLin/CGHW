@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<style>
+#info {
+  position: absolute;
+  top: 2%;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffffff
+}
+body {
+  overflow: hidden;
+}
+</style>
+
+<body>
+<div id="info">
+  hw5-2 Gooch Shaded Teapot
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
+<script src="http://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+
+<script id="myVertexShader" type="x-shader/x-vertex">
+    uniform vec3 lightpos;  // world coordinate
+    varying vec3 eyelightdir;
+    varying vec3 eyenormal;
+
+    varying vec4 eyepos;
+
+    void main() {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+        eyepos = modelViewMatrix * vec4 (position, 1.0);
+        vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
+        eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
+        eyenormal = normalMatrix * normal;
+    }
+</script>
+
+<script id="myFragmentShader" type="x-shader/x-fragment">
+    varying vec3 eyelightdir;
+    varying vec3 eyenormal;
+    varying vec4 eyepos;
+
+    uniform vec3 kcool;
+    uniform vec3 kwarm;
+
+    void main() {
+        float lDotn = dot (normalize (eyenormal), normalize (eyelightdir));
+
+        vec3 h = normalize(-normalize (eyepos.xyz) + normalize (eyelightdir));
+        float shininess = 40.;
+        vec3 specular = pow (dot (eyenormal, h), shininess) *vec3 (1,0,0);
+
+        float k = (1. + lDotn)/2.;
+        gl_FragColor = vec4(mix (kcool, kwarm, k) + specular, 1.0); // built-in: mix
+    }
+</script>
+<!--script id="myFragmentShader" type="x-shader/x-fragment">
+  varying vec3 eyelightdir;
+  varying vec3 eyenormal;
+  varying vec4 eyepos;
+  vec3	coolColor;
+  vec3	warmColor;
+  float alpha;
+  float beta;
+  uniform float opacity;
+  void main() {
+    // Gooch Shading
+    vec3 normalVector = normalize(eyenormal);
+    vec3 lightVector = normalize(eyelightdir);
+    float diffuse = dot(normalVector, lightVector);
+    coolColor = vec3(0.0, 0.682, 1.0);
+    warmColor = vec3(0.749, 0.392, 0.137);
+    alpha = 0.8;
+    beta = 0.2;
+    vec3 coolColorMod = coolColor + diffuse * alpha;
+    vec3 warmColorMod = warmColor + diffuse * beta;
+    vec3 colorOut = (1.0-(1.0 + diffuse)/2.0) * coolColorMod + ((1.0 + diffuse)/2.0) * warmColorMod;
+    gl_FragColor = vec4 (colorOut, opacity);
+  }
+</script-->
+
+<script>
+var scene, renderer, camera;
+var teapot;
+var pointLight, lightSphere;
+var keyboard = new KeyboardState();
+
+var teapotMaterial;
+var turn = true;
+var angle = 0;
+
+init();
+animate();
+
+function init() {
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+
+    renderer = new THREE.WebGLRenderer({
+        antialias: true
+    });
+    renderer.setSize(width, height);
+    document.body.appendChild(renderer.domElement);
+    renderer.setClearColor(0x888888);
+
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+    camera.position.y = 80;
+    camera.position.z = 200;
+
+    let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+    scene.add(gridXZ);
+
+    pointLight = new THREE.PointLight(0xffffff);
+    scene.add(pointLight);
+    scene.add (new THREE.PointLightHelper (pointLight, 5));
+
+    var ambientLight = new THREE.AmbientLight(0x111111);
+    scene.add(ambientLight);
+
+    window.addEventListener('resize', onWindowResize, false);
+
+    /////////////////////////////////////////////////////////////////
+
+    teapotMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+        	lightpos: {type: 'v3', value: new THREE.Vector3()},
+          kcool: {type: 'v3', value: new THREE.Vector3(0,0,1)},
+          kwarm: {type: 'v3', value: new THREE.Vector3(1,1,0)}
+        },
+        vertexShader: document.getElementById('myVertexShader').textContent,
+        fragmentShader: document.getElementById('myFragmentShader').textContent
+    });
+
+    var teapotGeometry = new THREE.TeapotBufferGeometry(10);
+    teapot = new THREE.Mesh(teapotGeometry, teapotMaterial);
+    scene.add(teapot);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+    keyboard.update();
+
+    if (keyboard.down("Z")) turn = !turn;
+    if (turn) angle += 0.01;
+
+    pointLight.position.set(50 * Math.cos(angle), 80, 50 * Math.sin(angle));
+
+    teapotMaterial.uniforms.lightpos.value.copy (pointLight.position);
+
+    requestAnimationFrame(animate);
+    render();
+}
+
+function render() {
+    renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
