@@ -105,33 +105,28 @@ javascript:(function(){var script=document.createElement('script');script.onload
   var pickables = [];
   var raycaster = new THREE.Raycaster();
   var mouse = new THREE.Vector2();
-
   var material_shh;
   var sceneRTT, cameraRTT;
   var renderTarget, renderTarget_whole;
   var planeXX;
+  var subject, subjectClone;
 
   init();
   animate();
-
   function init() {
     renderer = new THREE.WebGLRenderer({
       antialias: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x404040);
-
     renderer.autoClear = false;
-
     document.body.appendChild(renderer.domElement);
     camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 1000);
     camera.position.set(-70, 58, 70); // important
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     scene = new THREE.Scene();
-
     let gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
     //scene.add(gridXZ)
-
     // floor
     var loader = new THREE.TextureLoader();
     loader.setCrossOrigin ('');
@@ -145,15 +140,12 @@ javascript:(function(){var script=document.createElement('script');script.onload
     }));
     scene.add(floor)
     floor.rotation.x = -Math.PI / 2;
-
     // lighting
     var light = new THREE.AmbientLight(0x505050);
     scene.add(light)
-
     // room light
     roomLight = new THREE.DirectionalLight(0xffffff);
     scene.add(roomLight)
-
     // wall
     var wallTexture = loader.load('texture/HW4/cabinet_y.png');
     var wall_negz = new THREE.Mesh(new THREE.PlaneGeometry(200, 100, 140, 140), new THREE.MeshLambertMaterial({
@@ -175,7 +167,6 @@ javascript:(function(){var script=document.createElement('script');script.onload
     scene.add(wall_posz)
     scene.add(wall_negx)
     scene.add(wall_posx)
-
 		var onProgress = function(xhr) {
 			if (xhr.lengthComputable) {
 				var percentComplete = xhr.loaded / xhr.total * 100;
@@ -246,33 +237,26 @@ javascript:(function(){var script=document.createElement('script');script.onload
     window.addEventListener('resize', onWindowResize, false);
     document.addEventListener('mousedown', onDocumentMouseDown, false);
     document.addEventListener('mousemove', onDocumentMouseMove, false);
-
     Table = build_table();
     Drink = build_drink();
     Drink = unitize (Drink, 8);
     Drink.position.set(0, 30, 0);
     scene.add(Table);
     scene.add(Drink);
-
     //////////////////////////////////////////////////////////////
     var material_shh_normal = new THREE.ShaderMaterial({
       vertexShader: document.getElementById('vsNormal').textContent,
       fragmentShader: document.getElementById('fsNormal').textContent
     });
-
     // scene0: contains a torusKnot with shaderMaterial (for outline)
     // camera0: ortho camera
-
     scene0 = new THREE.Scene();
-    var subject = new THREE.Mesh (new THREE.TeapotBufferGeometry(2),
+    subject = new THREE.Mesh (new THREE.TeapotBufferGeometry(2),
     	material_shh_normal);
     scene0.add (subject);
     camera0 = new THREE.OrthographicCamera (-20,20,20,-20,-10,100);
-
     ////////////////////////////////////////////////////////
-
     renderTarget = new THREE.WebGLRenderTarget( 512,512);
-
     var uniforms = {
       imageSize: {
       	type: 'i',
@@ -283,39 +267,31 @@ javascript:(function(){var script=document.createElement('script');script.onload
         value: renderTarget.texture
       }
     };
-
     material_shh = new THREE.ShaderMaterial({
       uniforms: uniforms,
       vertexShader: document.getElementById('vsFilter').textContent,
       fragmentShader: document.getElementById('fsFilter').textContent
     });
-
     // sceneRTT: contains a plane to draw the outline
     sceneRTT = new THREE.Scene();
     cameraRTT = new THREE.OrthographicCamera(-50, 50, 50, -50, -10, 10);
     var bs = new THREE.Mesh(new THREE.PlaneGeometry(100,100), material_shh);
     sceneRTT.add(bs);
-
    ///////////////////////////////////////////////////////////////////
     // sceneRegular: contains the torusKnot with PhongMaterial
     // and all lights to light up the torusKnot
     sceneRegular = new THREE.Scene();
-    var subjectClone = subject.clone();
+    subjectClone = subject.clone();
     subjectClone.material = new THREE.MeshPhongMaterial();
     sceneRegular.add(subjectClone);
-
     var pointLight = new THREE.PointLight(0xffffff);
     pointLight.position.set(0, 300, 200);
     sceneRegular.add(pointLight);
-
     var ambientLight = new THREE.AmbientLight(0x555555);
     sceneRegular.add(ambientLight);
-
   //////////////////////
     renderTarget_whole = new THREE.WebGLRenderTarget( 512,512);
-
      // scene is the final plane (to be mapped with the final subject)
-
      cutoutShaderMat = new THREE.ShaderMaterial ({
       uniforms: {
          texture: {type:'t', value: renderTarget_whole.texture}
@@ -323,12 +299,10 @@ javascript:(function(){var script=document.createElement('script');script.onload
       vertexShader: document.getElementById('vsCut').textContent,
       fragmentShader: document.getElementById('fsCut').textContent
      });
-
      planeXX = new THREE.Mesh (new THREE.PlaneGeometry (50,50), cutoutShaderMat);
      scene.add (planeXX);
      planeXX.position.set(10, 33, 10);
   }
-
   function onDocumentMouseDown(event) {
     event.preventDefault();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -339,7 +313,6 @@ javascript:(function(){var script=document.createElement('script');script.onload
     if (intersects.length > 0) {
     }
   }
-
   function onDocumentMouseMove(event) {
     event.preventDefault();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -349,13 +322,11 @@ javascript:(function(){var script=document.createElement('script');script.onload
     if (intersects.length > 0) document.body.style.cursor = 'pointer';
     else document.body.style.cursor = 'auto';
   }
-
   function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
-
   function unitize (object, targetSize) {
   // find bounding box of 'object'
   var box3 = new THREE.Box3();
@@ -375,50 +346,39 @@ javascript:(function(){var script=document.createElement('script');script.onload
   object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
   return theObject;
 }
-
   function build_table() {
   var table = new THREE.Object3D();
   //table total size 60, 30, 40
   var loader = new THREE.TextureLoader();
   loader.setCrossOrigin ('');
-
   var material_base = new THREE.MeshPhongMaterial({
     map: loader.load('Texture/HW4/base.png')
   });
-
   var material_cabinet = new THREE.MeshLambertMaterial({
     map: loader.load('Texture/HW4/cabinet.png')
   });
-
   var material_leg = new THREE.MeshLambertMaterial({
     map: loader.load('Texture/HW4/table_leg.png')
   });
-
   var base = new THREE.Mesh(new THREE.BoxGeometry(64, 4, 44), material_base);
   base.position.y = 28;
-
   var table_leg_1 = new THREE.Mesh(new THREE.BoxGeometry(4, 26, 4), material_leg);
   var table_leg_2 = table_leg_1.clone();
   table_leg_1.position.set(-30, 13, -20);
   table_leg_2.position.set(-30, 2, -5);
   table_leg_2.rotation.x = Math.PI / 2;
-
   var cabinet = new THREE.Mesh(new THREE.BoxGeometry(22, 26, 42), material_cabinet);
   cabinet.position.set(21, 13, -1);
-
   table.add(base);
   table.add(table_leg_1);
   table.add(table_leg_2);
   table.add(cabinet);
-
   return table;
 }
-
   function build_drink(){
   var drink = new THREE.Object3D();
   var loader = new THREE.TextureLoader();
   loader.setCrossOrigin ('');
-
   var geometry = new THREE.Geometry();
   geometry.vertices.push(
     new THREE.Vector3(-10, 0, -10),
@@ -432,7 +392,6 @@ javascript:(function(){var script=document.createElement('script');script.onload
     new THREE.Vector3(-10, 28+Math.sqrt(21), 0),
     new THREE.Vector3(10, 28+Math.sqrt(21), 0)
   );
-
   var face;
   face = new THREE.Face3(3, 0, 7); face.materialIndex = 0;
   geometry.faces.push(face);
@@ -462,7 +421,6 @@ javascript:(function(){var script=document.createElement('script');script.onload
   geometry.faces.push(face);
   face = new THREE.Face3(6, 7, 9); face.materialIndex = 7;
   geometry.faces.push(face);
-
   geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
   geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
   geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
@@ -477,10 +435,8 @@ javascript:(function(){var script=document.createElement('script');script.onload
   geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
   geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
   geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
-
   geometry.computeFaceNormals();
   geometry.computeVertexNormals();
-
   materialArray.push(new THREE.MeshPhongMaterial({
     map : loader.load('Texture/HW4/drink_pz.jpg'),
     side : THREE.DoubleSide
@@ -506,41 +462,44 @@ javascript:(function(){var script=document.createElement('script');script.onload
   materialArray.push(new THREE.MeshPhongMaterial({
     map : loader.load('Texture/HW4/drink_up_nx.jpg')
   }))
-
   drink.add(new THREE.Mesh(geometry, materialArray));
   return drink;
 }
-
   function animate() {
     requestAnimationFrame(animate);
+
+    var py = new THREE.Vector3(0, 1, 0);
+    var pz = new THREE.Vector3(0, 0, 1);
+    var point = camera.position.clone().sub(subject.position).projectOnPlane(py);
+    var angle = point.angleTo(pz);
+    var test = new THREE.Vector3();
+    if(test.crossVectors(pz, point).dot(py) > 0) angle = -angle;
+
+    subject.rotation.y = angle;
+    subjectClone.rotation.y = angle;
+
     material_shh.uniforms.imageSize.value = 60;
   // this value can alter the width of silhouette !!
   // 1024: original width
   // 512, 256, 128, ...: wider silhouette
-
   // scene0: torusKnot with shaderMaterial (draw eyeNormal)
   renderer.setRenderTarget (renderTarget);
   renderer.setClearColor (0x000000);
   renderer.clear();
   renderer.render (scene0, camera0);  // produce eyeNormal plot of subject
-
   // sceneRTT: fullQuad + filter (discard "near black" fragments)
   renderer.setRenderTarget (renderTarget_whole);
   renderer.setClearColor (0xffff00);  // yellow "magic" background ... to be cutout
   renderer.clear()
   renderer.render (sceneRTT, cameraRTT);  // produce outline
-
   // overlay the lit torusKnot
   renderer.render(sceneRegular, camera0); // camera0: the same as eyeNormal plot
-
   ///////// final texture completed (except boundary removal)
   planeXX.lookAt (camera.position.x, 25, camera.position.z);
-
   renderer.setRenderTarget (null);
   renderer.setClearColor (0x888888);
   renderer.clear();
   renderer.render (scene, camera);  // planeXX (in scene) contains a shaderMaterial to cutout border
-
   }
 </script>
 
