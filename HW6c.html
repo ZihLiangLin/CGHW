@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HW6</title>
+</head>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
+<script src="https://raw.githack.com/mrdoob/three.js/master/examples/js/utils/BufferGeometryUtils.js"></script>
+
+<!--sobel filter-->
+<script id="vs-sobel" type="x-shader/x-vertex">
+  varying vec2 vUv;
+  void main() {
+     gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
+     vUv = uv;
+  }
+</script>
+<script id="fs-sobel" type="x-shader/x-fragment">
+  uniform sampler2D texture;
+  uniform vec2 imageSize;
+  varying vec2 vUv;
+  float step_w = 1.0/imageSize.x;
+  float step_h = 1.0/imageSize.y;
+  void main() {
+  	float kernel[9];
+
+    vec2 offset[9];
+  	offset[0]=vec2(-step_w, -step_h);
+  	offset[1]=vec2(0.0, -step_h); offset[2]= vec2(step_w, -step_h),
+  	offset[3]=vec2(-step_w, 0.0), offset[4]=vec2(0.0, 0.0), offset[5]=vec2(step_w, 0.0),
+  	offset[6]=vec2(-step_w, step_h), offset[7]=vec2(0.0, step_h), offset[8]=vec2(step_w, step_h);
+
+	// sobel filter - Gx
+	for (int i = 0; i < 9; i++) kernel[i]=0.0;
+	kernel[0] = -1.0; kernel[2] = 1.0;
+	kernel[3] = -2.0; kernel[5] =  2.0;
+	kernel[6] = -1.0; kernel[8] = 1.0;
+
+  	vec3 sumX= vec3(0.0);
+  	for (int i=0 ; i < 9; i++) {
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb;
+      	sumX += tmp*kernel[i];
+    }
+
+	// sobel filter - Gy
+	for (int i = 0; i < 9; i++) kernel[i]=0.0;
+	kernel[6] = -1.0; kernel[7] = -2.0; kernel[8] = -1.0;
+	kernel[0] = 1.0; kernel[1] = 2.0; kernel[2] = 1.0;
+
+  	vec3 sumY= vec3(0.0);
+  	for (int i=0 ; i < 9; i++) {
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb;
+      	sumY += tmp*kernel[i];
+    }
+	vec3 delX = vec3 (1, 0, sumX);
+	vec3 delY = vec3 (0, 1, sumY);
+	vec3 n = normalize (cross (delX, delY));
+
+	vec3 encode = (n + vec3 (1))/2.0;
+
+  	gl_FragColor = vec4 (encode, 1.0);
+  }
+</script>
+<!--normal map-->
+<script id="vs-normalmap" type="x-shader/x-vertex">
+    uniform vec3 lightpos;
+
+	attribute vec4 tangent;
+	varying vec2 vUv;
+	varying vec3 vTangent;
+	varying vec3 vBitangent;
+	varying vec3 vNormal;
+	varying vec3 vLL;
+
+	void main() {
+	  vec4 vWorldpos = modelMatrix * vec4( position, 1.0 ) ;
+	  vec2 myrepeat = vec2 (1.0, 1.0);
+	  vUv = myrepeat*uv;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+	  // TBN in eyespace
+	  // no need to normalize these varying variable
+	  // as they will be normalized in fragment shader
+	  //
+        vNormal = normalMatrix * normal ;
+		vTangent = normalMatrix * tangent.xyz ;
+		vBitangent = cross( vNormal, vTangent ) ;
+
+		vLL = normalMatrix * (lightpos - vWorldpos.xyz);
+	}
+
+</script>
+<script id='fs-normalmap' type="x-shader/x-vertex">
+
+	uniform sampler2D tNormal;
+	varying vec2 vUv;
+	varying vec3 vTangent;
+	varying vec3 vBitangent;
+	varying vec3 vNormal;
+	varying vec3 vLL;
+
+	void main() {
+
+		vec3 normalTex = texture2D (tNormal, vUv).xyz * 2.0 - 1.0;
+		normalTex.xy *= 6.0;    // exaggerate the normal deviation
+		normalTex = normalize( normalTex );
+
+		mat3 tsb = mat3( normalize( vTangent ), normalize( vBitangent ), normalize( vNormal ) );
+		vec3 finalNormal = tsb * normalTex;
+		float ndotl = dot (normalize (vLL), normalize (finalNormal));
+		gl_FragColor = vec4( vec3(ndotl), 1 );
+
+	}
+</script>
+
+
+<style>
+	body {
+    margin: 0px;
+		overflow: hidden
+	}
+</style>
+
+<body>
+<script>
+javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
+
+  var renderer, camera, controls, scene, renderTarget, sceneRTT;
+  var Table, Drink;
+  var materialArray = [];
+  var roomLight;
+  var pickables = [];
+  var raycaster = new THREE.Raycaster();
+  var mouse = new THREE.Vector2();
+  var shaderMaterial;
+  var angle = 0 ,light0;
+
+  init();
+  animate();
+  function init() {
+    renderer = new THREE.WebGLRenderer({
+      antialias: true
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x404040);
+    renderer.autoClear = false;
+    document.body.appendChild(renderer.domElement);
+    camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 1000);
+    camera.position.set(-70, 58, 70); // important
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    scene = new THREE.Scene();
+    let gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+    //scene.add(gridXZ)
+    // floor
+    var loader = new THREE.TextureLoader();
+    loader.setCrossOrigin ('');
+    var floorTexture = loader.load('Texture/tile.jpg');
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(2, 2);
+    var floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200, 140, 140), new THREE.MeshLambertMaterial({
+      map: floorTexture,
+      side: THREE.DoubleSide
+    }));
+    scene.add(floor)
+    floor.rotation.x = -Math.PI / 2;
+    // lighting
+    var light = new THREE.AmbientLight(0x505050);
+    scene.add(light)
+    // room light
+    roomLight = new THREE.DirectionalLight(0xffffff);
+    scene.add(roomLight)
+    // wall
+    var wallTexture = loader.load('texture/HW4/cabinet_y.png');
+    var wall_negz = new THREE.Mesh(new THREE.PlaneGeometry(200, 100, 140, 140), new THREE.MeshLambertMaterial({
+      map: wallTexture
+    }));
+    wall_negz.position.y = 50;
+    var wall_posz = wall_negz.clone();
+    var wall_posx = wall_negz.clone();
+    var wall_negx = wall_negz.clone();
+    wall_negz.position.z = -100;
+    wall_posz.rotation.x = Math.PI;
+    wall_posz.position.z = 100;
+    wall_posz.rotation.z = Math.PI;
+    wall_negx.position.x = -100;
+    wall_negx.rotation.y = Math.PI / 2;
+    wall_posx.position.x = 100;
+    wall_posx.rotation.y = -Math.PI / 2;
+    scene.add(wall_negz)
+    scene.add(wall_posz)
+    scene.add(wall_negx)
+    scene.add(wall_posx)
+		var onProgress = function(xhr) {
+			if (xhr.lengthComputable) {
+				var percentComplete = xhr.loaded / xhr.total * 100;
+				console.log(Math.round(percentComplete, 2) + '% downloaded');
+			}
+		};
+		var onError = function(xhr) {};
+		var mtlLoader = new THREE.MTLLoader();
+		mtlLoader.setPath('OBJ_Model/models/HW4/');
+		mtlLoader.load('lamp.mtl', function(materials) {
+			materials.preload();
+			var objLoader = new THREE.OBJLoader();
+			objLoader.setMaterials(materials);
+			objLoader.setPath('OBJ_Model/models/HW4/');
+			objLoader.load('lamp.obj', function(object) {
+				let model = unitize (object, 20);
+        model.position.set(-22, 30, -15);
+        model.rotation.y = -Math.PI / 4;
+        model.traverse (
+         function (mesh) {
+            if (mesh instanceof THREE.Mesh) {
+            }
+          }
+        );
+				scene.add(model);
+				object.traverse (
+					function(mesh) {
+						if (mesh instanceof THREE.Mesh) {
+							mesh.material.side = THREE.DoubleSide;
+						}
+				});
+			}, onProgress, onError);
+		});
+    // chairModel
+		onProgress = function(xhr) {
+			if (xhr.lengthComputable) {
+				var percentComplete = xhr.loaded / xhr.total * 100;
+				console.log(Math.round(percentComplete, 2) + '% downloaded');
+			}
+		};
+		onError = function(xhr) {};
+		mtlLoader = new THREE.MTLLoader();
+		mtlLoader.setPath('OBJ_Model/models/HW4/');
+		mtlLoader.load('chair.mtl', function(materials) {
+			materials.preload();
+			var objLoader = new THREE.OBJLoader();
+			objLoader.setMaterials(materials);
+			objLoader.setPath('OBJ_Model/models/HW4/');
+			objLoader.load('chair.obj', function(object) {
+				let model = unitize (object, 35);
+        model.position.set(-10, -5, 35);
+        model.rotation.y = Math.PI;
+        model.traverse (
+         function (mesh) {
+            if (mesh instanceof THREE.Mesh) {
+            }
+          }
+        );
+				scene.add(model);
+				object.traverse (
+					function(mesh) {
+						if (mesh instanceof THREE.Mesh) {
+							mesh.material.side = THREE.DoubleSide;
+						}
+				});
+			}, onProgress, onError);
+		});
+    window.addEventListener('resize', onWindowResize, false);
+    document.addEventListener('mousedown', onDocumentMouseDown, false);
+    document.addEventListener('mousemove', onDocumentMouseMove, false);
+    Table = build_table();
+    Drink = build_drink();
+    Drink = unitize (Drink, 8);
+    Drink.position.set(0, 30, 0);
+    scene.add(Table);
+    scene.add(Drink);
+    subject = new THREE.Mesh (new THREE.TeapotBufferGeometry(2),
+    	new THREE.MeshPhongMaterial());
+    scene.add (subject);
+    subject.position.set(10, 32, 10);
+
+    ////////////////////////////////////////////////////////////////////////
+    light0 = new THREE.PointLight ();
+  scene.add (light0);
+  scene.add (new THREE.PointLightHelper (light0,5));
+    sceneRTT = new THREE.Scene();
+    let texture = loader.load('https://i.imgur.com/A7iqfXD.png');  // olympus
+    //  let texture = loader.load('https://i.imgur.com/NHXZYjr.png?2');  // gakki
+
+     var uniforms = {
+      imageSize: {
+        type: 'v2',
+        value: new THREE.Vector2(256,256)
+      },
+      texture: {
+        type: 't',
+        value: texture
+      } ,
+    };
+
+    var vertShader = document.getElementById('vs-sobel').textContent;
+    var fragShader = document.getElementById('fs-sobel').textContent;
+    material_shader = new THREE.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: vertShader,
+      fragmentShader: fragShader,
+      side: THREE.DoubleSide
+    });
+
+    var geometry = new THREE.PlaneGeometry(25,25);
+    var mesh = new THREE.Mesh (geometry, material_shader);
+    sceneRTT.add (mesh)
+
+    ////////////////////////////////////////////////////////////////////////
+    renderTarget = new THREE.WebGLRenderTarget(256, 256);
+    var geometryy = new THREE.PlaneBufferGeometry( 50,50 );
+    THREE.BufferGeometryUtils.computeTangents(geometryy);
+
+    var uniforms = {
+      imageSize: {
+        type: 'v2',
+        value: 512
+      },
+      tNormal: {
+        type: 't',
+        value: renderTarget.texture
+      },
+      lightpos: {
+        type: 'v3',
+        value: new THREE.Vector3()
+      }
+
+    };
+
+    var vertShader = document.getElementById('vs-normalmap').textContent;
+    var fragShader = document.getElementById('fs-normalmap').textContent;
+
+    shaderMaterial = new THREE.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: vertShader,
+      fragmentShader: fragShader
+    });
+    let meshh = new THREE.Mesh (geometryy, shaderMaterial)
+    scene.add (meshh);
+    meshh.position.y = 25;
+  }
+function onDocumentMouseDown(event) {
+    event.preventDefault();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // find intersections
+    raycaster.setFromCamera(mouse, camera);
+    var intersects = raycaster.intersectObjects(pickables, true);
+    if (intersects.length > 0) {
+    }
+  }
+function onDocumentMouseMove(event) {
+    event.preventDefault();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    var intersects = raycaster.intersectObjects(pickables, true);
+    if (intersects.length > 0) document.body.style.cursor = 'pointer';
+    else document.body.style.cursor = 'auto';
+  }
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+function unitize (object, targetSize) {
+  // find bounding box of 'object'
+  var box3 = new THREE.Box3();
+  box3.setFromObject (object);
+  var size = new THREE.Vector3();
+  size.subVectors (box3.max, box3.min);
+  var center = new THREE.Vector3();
+  center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+  console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+  console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+  // uniform scaling according to objSize
+  var objSize = Math.max (size.x, size.y, size.z);
+  var scaleSet = targetSize/objSize;
+  var theObject =  new THREE.Object3D();
+  theObject.add (object);
+  object.scale.set (scaleSet, scaleSet, scaleSet);
+  object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
+  return theObject;
+}
+function build_table() {
+  var table = new THREE.Object3D();
+  //table total size 60, 30, 40
+  var loader = new THREE.TextureLoader();
+  loader.setCrossOrigin ('');
+  var material_base = new THREE.MeshPhongMaterial({
+    map: loader.load('Texture/HW4/base.png')
+  });
+  var material_cabinet = new THREE.MeshLambertMaterial({
+    map: loader.load('Texture/HW4/cabinet.png')
+  });
+  var material_leg = new THREE.MeshLambertMaterial({
+    map: loader.load('Texture/HW4/table_leg.png')
+  });
+  var base = new THREE.Mesh(new THREE.BoxGeometry(64, 4, 44), material_base);
+  base.position.y = 28;
+  var table_leg_1 = new THREE.Mesh(new THREE.BoxGeometry(4, 26, 4), material_leg);
+  var table_leg_2 = table_leg_1.clone();
+  table_leg_1.position.set(-30, 13, -20);
+  table_leg_2.position.set(-30, 2, -5);
+  table_leg_2.rotation.x = Math.PI / 2;
+  var cabinet = new THREE.Mesh(new THREE.BoxGeometry(22, 26, 42), material_cabinet);
+  cabinet.position.set(21, 13, -1);
+  table.add(base);
+  table.add(table_leg_1);
+  table.add(table_leg_2);
+  table.add(cabinet);
+  return table;
+}
+function build_drink(){
+  var drink = new THREE.Object3D();
+  var loader = new THREE.TextureLoader();
+  loader.setCrossOrigin ('');
+  var geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(-10, 0, -10),
+    new THREE.Vector3(-10, 0, 10),
+    new THREE.Vector3(10, 0, 10),
+    new THREE.Vector3(10, 0, -10),
+    new THREE.Vector3(-10, 28, -10),
+    new THREE.Vector3(-10, 28, 10),
+    new THREE.Vector3(10, 28, 10),
+    new THREE.Vector3(10, 28, -10),
+    new THREE.Vector3(-10, 28+Math.sqrt(21), 0),
+    new THREE.Vector3(10, 28+Math.sqrt(21), 0)
+  );
+  var face;
+  face = new THREE.Face3(3, 0, 7); face.materialIndex = 0;
+  geometry.faces.push(face);
+  face = new THREE.Face3(0, 4, 7); face.materialIndex = 0;
+  geometry.faces.push(face);
+  face = new THREE.Face3(1, 5, 4); face.materialIndex = 1;
+  geometry.faces.push(face);
+  face = new THREE.Face3(0, 1, 4); face.materialIndex = 1;
+  geometry.faces.push(face);
+  face = new THREE.Face3(1, 2, 5); face.materialIndex = 2;
+  geometry.faces.push(face);
+  face = new THREE.Face3(2, 6, 5); face.materialIndex = 2;
+  geometry.faces.push(face);
+  face = new THREE.Face3(2, 3, 6); face.materialIndex = 3;
+  geometry.faces.push(face);
+  face = new THREE.Face3(3, 7, 6); face.materialIndex = 3;
+  geometry.faces.push(face);
+  face = new THREE.Face3(7, 4, 9); face.materialIndex = 4;
+  geometry.faces.push(face);
+  face = new THREE.Face3(4, 8, 9); face.materialIndex = 4;
+  geometry.faces.push(face);
+  face = new THREE.Face3(4, 5, 8); face.materialIndex = 5;
+  geometry.faces.push(face);
+  face = new THREE.Face3(6, 9, 8); face.materialIndex = 6;
+  geometry.faces.push(face);
+  face = new THREE.Face3(5, 6, 8); face.materialIndex = 6;
+  geometry.faces.push(face);
+  face = new THREE.Face3(6, 7, 9); face.materialIndex = 7;
+  geometry.faces.push(face);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(0, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_pz.jpg'),
+    side : THREE.DoubleSide
+  }))
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_px.jpg')
+  }))
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_nz.jpg')
+  }))
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_nx.jpg')
+  }))
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_up_pz.jpg')
+  }))
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_up_px.jpg')
+  }))
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_up_nz.jpg')
+  }))
+  materialArray.push(new THREE.MeshPhongMaterial({
+    map : loader.load('Texture/HW4/drink_up_nx.jpg')
+  }))
+  drink.add(new THREE.Mesh(geometry, materialArray));
+  return drink;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  angle += 0.01;
+    light0.position.set (50*Math.cos(angle), 20, 50*Math.sin(angle));
+    shaderMaterial.uniforms.lightpos.value.copy (light0.position);
+  // render teapot to texture
+  renderer.setClearColor(0x888800);
+  renderer.setRenderTarget (renderTarget);
+  renderer.render(sceneRTT, camera);
+	renderer.setRenderTarget (null);
+
+  // render texture to screne
+  renderer.setClearColor(0x888888);
+  renderer.render(scene, camera);
+  }
+</script>
+
+</body>
+</html>
