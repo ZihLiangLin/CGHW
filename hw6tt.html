@@ -29,72 +29,67 @@ body {
 
 <body>
 <div id="info">
-  <br> Image Filter + RTT
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
-<script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/107/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+
+<script id="vs-sobel" type="x-shader/x-vertex">
+  varying vec2 vUv;
+  void main() {
+     gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
+     vUv = uv;
+  }
 </script>
-<script src="https://raw.githack.com/mrdoob/three.js/master/examples/js/utils/BufferGeometryUtils.js"></script>
+<script id="fs-sobel" type="x-shader/x-fragment">
+  uniform sampler2D texture;
+  uniform vec2 imageSize;
+  varying vec2 vUv;
+  float step_w = 1.0/imageSize.x;
+  float step_h = 1.0/imageSize.y;
+  void main() {
+  	float kernel[9];
 
-<script id="vs-normalmap" type="x-shader/x-vertex">
-    uniform vec3 lightpos;
+    vec2 offset[9];
+  	offset[0]=vec2(-step_w, -step_h);
+  	offset[1]=vec2(0.0, -step_h); offset[2]= vec2(step_w, -step_h),
+  	offset[3]=vec2(-step_w, 0.0), offset[4]=vec2(0.0, 0.0), offset[5]=vec2(step_w, 0.0),
+  	offset[6]=vec2(-step_w, step_h), offset[7]=vec2(0.0, step_h), offset[8]=vec2(step_w, step_h);
 
-	attribute vec4 tangent;
-	varying vec2 vUv;
-	varying vec3 vTangent;
-	varying vec3 vBitangent;
-	varying vec3 vNormal;
-	varying vec3 vLL;
+	// sobel filter - Gx
+	for (int i = 0; i < 9; i++) kernel[i]=0.0;
+	kernel[0] = -1.0; kernel[2] = 1.0;
+	kernel[3] = -2.0; kernel[5] =  2.0;
+	kernel[6] = -1.0; kernel[8] = 1.0;
 
-	void main() {
-	  vec4 vWorldpos = modelMatrix * vec4( position, 1.0 ) ;
-	  vec2 myrepeat = vec2 (1.0, 1.0);
-	  vUv = myrepeat*uv;
+  	vec3 sumX= vec3(0.0);
+  	for (int i=0 ; i < 9; i++) {
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb;
+      	sumX += tmp*kernel[i];
+    }
 
-      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	// sobel filter - Gy
+	for (int i = 0; i < 9; i++) kernel[i]=0.0;
+	kernel[6] = -1.0; kernel[7] = -2.0; kernel[8] = -1.0;
+	kernel[0] = 1.0; kernel[1] = 2.0; kernel[2] = 1.0;
 
-	  // TBN in eyespace
-	  // no need to normalize these varying variable
-	  // as they will be normalized in fragment shader
-	  //
-        vNormal = normalMatrix * normal ;
-		vTangent = normalMatrix * tangent.xyz ;
-		vBitangent = cross( vNormal, vTangent ) ;
+  	vec3 sumY= vec3(0.0);
+  	for (int i=0 ; i < 9; i++) {
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb;
+      	sumY += tmp*kernel[i];
+    }
+	vec3 delX = vec3 (1, 0, sumX);
+	vec3 delY = vec3 (0, 1, sumY);
+	vec3 n = normalize (cross (delX, delY));
 
-		vLL = normalMatrix * (lightpos - vWorldpos.xyz);
-	}
+	vec3 encode = (n + vec3 (1))/2.0;
 
-</script>
+  	gl_FragColor = vec4 (encode, 1.0);
+  }
 
-<script id='fs-normalmap' type="x-shader/x-vertex">
-
-	uniform sampler2D tNormal;
-	varying vec2 vUv;
-	varying vec3 vTangent;
-	varying vec3 vBitangent;
-	varying vec3 vNormal;
-	varying vec3 vLL;
-
-	void main() {
-
-		vec3 normalTex = texture2D (tNormal, vUv).xyz * 2.0 - 1.0;
-		normalTex.xy *= 6.0;    // exaggerate the normal deviation
-		normalTex = normalize( normalTex );
-
-		mat3 tsb = mat3( normalize( vTangent ), normalize( vBitangent ), normalize( vNormal ) );
-		vec3 finalNormal = tsb * normalTex;
-		float ndotl = dot (normalize (vLL), normalize (finalNormal));
-		gl_FragColor = vec4( vec3(ndotl), 1 );
-
-	}
 </script>
 <script>
-javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
-
 var scene, renderer, camera;
-var shaderMaterial;
-var angle = 0;
 
 init();
 animate();
@@ -102,6 +97,8 @@ animate();
 function init() {
   width = window.innerWidth;
   height = window.innerHeight;
+  width = 256;
+  height = 256;
 
   renderer = new THREE.WebGLRenderer({
     antialias: true
@@ -111,19 +108,7 @@ function init() {
   renderer.setClearColor(0x888888);
 
   scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
-  camera.position.y = 80;
-  camera.position.z = 400;
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-  let controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-  light = new THREE.PointLight ();
-  scene.add (light);
-  scene.add (new THREE.PointLightHelper (light,5));
-
-  var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
-  scene.add(gridXZ);
+  camera = new THREE.OrthographicCamera (-50,50,50,-50,-10,100);
 
   window.addEventListener('resize', onWindowResize, false);
   function onWindowResize() {
@@ -131,74 +116,42 @@ function init() {
   	camera.updateProjectionMatrix();
   	renderer.setSize(window.innerWidth, window.innerHeight);
   }
-
-  //
-
   ////////////////////////////////////////////////////////////////////////
-  var geometry = new THREE.PlaneBufferGeometry( 50,50 );
-  THREE.BufferGeometryUtils.computeTangents(geometry);
-
   let loader = new THREE.TextureLoader();
-  loader.crossOrigin = '';
-  let texture = loader.load('https://i.imgur.com/nv73w3f.jpg'); // normal map
+  loader.setCrossOrigin ('');
+  let texture = loader.load('Texture/00.jpg');  // olympus
+//  let texture = loader.load('https://i.imgur.com/NHXZYjr.png?2');  // gakki
 
-  var uniforms = {
+   var uniforms = {
     imageSize: {
       type: 'v2',
-      value: 512
+      value: new THREE.Vector2(256,256)
     },
-    tNormal: {
+    texture: {
       type: 't',
       value: texture
-    },
-    lightpos: {
-      type: 'v3',
-      value: new THREE.Vector3()
-    }
-
+    } ,
   };
 
-  var vertShader = document.getElementById('vs-normalmap').textContent;
-  var fragShader = document.getElementById('fs-normalmap').textContent;
-
-  shaderMaterial = new THREE.ShaderMaterial({
+  var vertShader = document.getElementById('vs-sobel').textContent;
+  var fragShader = document.getElementById('fs-sobel').textContent;
+  material_shader = new THREE.ShaderMaterial({
     uniforms: uniforms,
     vertexShader: vertShader,
-    fragmentShader: fragShader
+    fragmentShader: fragShader,
+    side: THREE.DoubleSide
   });
-  let mesh = new THREE.Mesh (geometry, shaderMaterial)
-  scene.add (mesh);
-  mesh.position.y = 25;
 
+  var geometry = new THREE.PlaneGeometry(100,100);
+  var mesh = new THREE.Mesh (geometry, material_shader);
+  scene.add (mesh)
 
-  ///////////////////////////////////////////////////////////
-
-/*
-   // to get texture image size:
-   // https://stackoverflow.com/questions/49111431/how-to-get-texture-dimensions-with-three-js
-
-  let loader = new THREE.TextureLoader();
-  loader.crossOrigin = '';
-  let olympus = 'https://i.imgur.com/A7iqfXD.png';
-  let gakki = 'https://i.imgur.com/NHXZYjr.png?2';
-  let texture = loader.load('https://i.imgur.com/nv73w3f.jpg', function (tex) {
-  	console.log (tex.image.width + ', ' + tex.image.height);
-  	renderTarget.setSize (tex.image.width, tex.image.width);
-  	shaderMaterial.uniforms.imageSize.value = tex.image.width;
-  	shaderMaterial.uniforms.texture.value= tex;
-  });
-*/
 }
 
 
 function animate() {
 
   requestAnimationFrame(animate);
-
-  angle += 0.01;
-  light.position.set (50*Math.cos(angle), 20, 50*Math.sin(angle));
-  shaderMaterial.uniforms.lightpos.value.copy (light.position);
-
   renderer.render(scene, camera);
 
 }
